@@ -53,9 +53,9 @@ jobs:
       run: |
         # Create buildozer directories
         mkdir -p ~/.buildozer/android/platform
+        cd ~/.buildozer/android/platform
         
         # Download and setup Android SDK Command-line Tools
-        cd ~/.buildozer/android/platform
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
         unzip -q cmdline-tools.zip
         mkdir -p android-sdk/cmdline-tools
@@ -80,7 +80,8 @@ jobs:
         # Download and setup Android NDK
         wget https://dl.google.com/android/repository/android-ndk-r25c-linux.zip -O ndk.zip
         unzip -q ndk.zip
-        mv android-ndk-r25c android-ndk-r25c
+        # The zip already creates android-ndk-r25c directory, so we don't need to rename it
+        rm ndk.zip
 
     - name: Cache Buildozer global directory
       uses: actions/cache@v3
