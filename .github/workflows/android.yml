@@ -24,14 +24,29 @@ jobs:
           openjdk-17-jdk \
           unzip \
           zip \
+          wget \
           libffi-dev \
           libssl-dev \
           zlib1g-dev \
           build-essential
 
-    - name: Install Android SDK (for aidl)
+    - name: Install Android SDK cmdline-tools + build-tools (aidl)
       run: |
-        sudo apt install -y android-sdk
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        cd $ANDROID_SDK_ROOT/cmdline-tools
+
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip commandlinetools-linux-*.zip
+        mv cmdline-tools latest
+
+        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+
+        yes | sdkmanager --licenses
+        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_SDK_ROOT/build-tools/33.0.2:$PATH" >> $GITHUB_ENV
 
     - name: Install buildozer
       run: |
