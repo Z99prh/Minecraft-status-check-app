@@ -141,8 +141,7 @@ class StatusCard(FloatLayout):
     """Card widget to display server status"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.size_hint = (1, None)
-        self.height = 300
+        self.size_hint = (1, 0.45)
         
         with self.canvas.before:
             Color(0.05, 0.05, 0.05, 1)
@@ -150,9 +149,12 @@ class StatusCard(FloatLayout):
         
         self.bind(pos=self.update_bg, size=self.update_bg)
         
+        # Center container for all text
+        center_container = FloatLayout(size_hint=(1, 1))
+        
         # Status indicator (circle)
         self.status_indicator = FloatLayout(size_hint=(None, None), size=(20, 20),
-                                           pos_hint={'x': 0.05, 'top': 0.95})
+                                           pos_hint={'center_x': 0.5, 'top': 0.95})
         with self.status_indicator.canvas:
             self.indicator_color = Color(0.5, 0.5, 0.5, 1)
             self.indicator_circle = RoundedRectangle(
@@ -161,63 +163,67 @@ class StatusCard(FloatLayout):
                 radius=[10]
             )
         self.status_indicator.bind(pos=self.update_indicator, size=self.update_indicator)
+        center_container.add_widget(self.status_indicator)
         
-        # Labels
+        # Status label
         self.status_label = Label(
             text='OFFLINE',
             font_name='Minecraft',
-            font_size='24sp',
+            font_size='28sp',
             bold=True,
             color=(0.7, 0.7, 0.7, 1),
-            pos_hint={'x': 0.15, 'top': 0.95},
-            size_hint=(0.8, 0.2),
-            halign='left',
+            pos_hint={'center_x': 0.5, 'top': 0.95},
+            size_hint=(0.9, 0.15),
+            halign='center',
             valign='middle'
         )
         self.status_label.bind(size=self.status_label.setter('text_size'))
+        center_container.add_widget(self.status_label)
         
+        # Version label - centered with spacing
         self.version_label = Label(
             text='Version: ---',
             font_name='Minecraft',
-            font_size='16sp',
+            font_size='20sp',
             color=(0.6, 0.9, 1, 1),
-            pos_hint={'x': 0.05, 'top': 0.7},
+            pos_hint={'center_x': 0.5, 'top': 0.75},
             size_hint=(0.9, 0.15),
-            halign='left',
+            halign='center',
             valign='middle'
         )
         self.version_label.bind(size=self.version_label.setter('text_size'))
+        center_container.add_widget(self.version_label)
         
+        # Players label - centered with spacing
         self.players_label = Label(
             text='Players: 0/0',
             font_name='Minecraft',
-            font_size='16sp',
+            font_size='20sp',
             color=(1, 0.85, 0, 1),
-            pos_hint={'x': 0.05, 'top': 0.55},
+            pos_hint={'center_x': 0.5, 'top': 0.6},
             size_hint=(0.9, 0.15),
-            halign='left',
+            halign='center',
             valign='middle'
         )
         self.players_label.bind(size=self.players_label.setter('text_size'))
+        center_container.add_widget(self.players_label)
         
+        # MOTD label - centered with proper spacing
         self.motd_label = Label(
             text='MOTD: ---',
             font_name='Minecraft',
-            font_size='14sp',
+            font_size='18sp',
             color=(0.8, 0.8, 0.8, 1),
-            pos_hint={'x': 0.05, 'top': 0.4},
-            size_hint=(0.9, 0.35),
-            halign='left',
+            pos_hint={'center_x': 0.5, 'top': 0.35},
+            size_hint=(0.9, 0.4),
+            halign='center',
             valign='top',
             markup=True
         )
         self.motd_label.bind(size=self.motd_label.setter('text_size'))
+        center_container.add_widget(self.motd_label)
         
-        self.add_widget(self.status_indicator)
-        self.add_widget(self.status_label)
-        self.add_widget(self.version_label)
-        self.add_widget(self.players_label)
-        self.add_widget(self.motd_label)
+        self.add_widget(center_container)
     
     def update_bg(self, *args):
         self.bg_rect.pos = self.pos
@@ -265,27 +271,42 @@ class MCStatusApp(App):
             self.bg_rect = Rectangle(pos=root.pos, size=root.size)
         root.bind(pos=self.update_bg, size=self.update_bg)
         
-        # Content layout
-        content = BoxLayout(
+        # Main content layout - now without the title
+        main_content = BoxLayout(
             orientation='vertical',
             padding=20,
             spacing=20,
             pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            size_hint=(0.95, 0.95)
+            size_hint=(1, 0.85)
         )
         
-        # Title
-        title = Label(
-            text='[b]MINECRAFT[/b]\n[size=20sp]Server Status Checker[/size]',
-            font_name='Minecraft',
-            font_size='32sp',
-            markup=True,
-            color=(0.3, 1, 0.3, 1),
+        # Top bar for the title
+        top_bar = FloatLayout(
             size_hint=(1, 0.15),
+            pos_hint={'top': 1}
+        )
+        
+        with top_bar.canvas.before:
+            Color(0.05, 0.15, 0.05, 1)
+            top_bar.bg_rect = Rectangle(pos=top_bar.pos, size=top_bar.size)
+        top_bar.bind(pos=lambda instance, value: setattr(top_bar.bg_rect, 'pos', instance.pos))
+        top_bar.bind(size=lambda instance, value: setattr(top_bar.bg_rect, 'size', instance.size))
+        
+        # Title in the top bar
+        title = Label(
+            text='MINECRAFT\nServer Status Checker',
+            font_name='Minecraft',
+            font_size='24sp',
+            bold=True,
+            color=(0.3, 1, 0.3, 1),
+            size_hint=(1, 1),
             halign='center',
             valign='middle'
         )
         title.bind(size=title.setter('text_size'))
+        top_bar.add_widget(title)
+        
+        root.add_widget(top_bar)
         
         # Input field
         self.input = TextInput(
@@ -326,17 +347,16 @@ class MCStatusApp(App):
         )
         self.monitor_btn.bind(on_press=self.toggle_monitoring)
         
-        # Status card
+        # Status card - now takes more space
         self.status_card = StatusCard()
         
-        # Add widgets
-        content.add_widget(title)
-        content.add_widget(self.input)
-        content.add_widget(self.check_btn)
-        content.add_widget(self.monitor_btn)
-        content.add_widget(self.status_card)
+        # Add widgets to main content
+        main_content.add_widget(self.input)
+        main_content.add_widget(self.check_btn)
+        main_content.add_widget(self.monitor_btn)
+        main_content.add_widget(self.status_card)
         
-        root.add_widget(content)
+        root.add_widget(main_content)
         
         # Request Android permissions
         if platform == 'android':
