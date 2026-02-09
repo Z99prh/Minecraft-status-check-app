@@ -32,15 +32,58 @@ jobs:
           libffi-dev \
           libssl-dev \
           zlib1g-dev \
-          build-essential
+          build-essential \
+          git \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libtool \
+          pkg-config \
+          cmake \
+          ninja-build \
+          ccache \
+          autoconf \
+          automake
 
     - name: Install buildozer
       run: |
         python -m pip install --upgrade pip
         pip install buildozer cython
 
+    - name: Setup Android SDK
+      run: |
+        mkdir -p ~/.buildozer/android/platform
+        cd ~/.buildozer/android/platform
+        
+        # Download Android SDK command-line tools
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip commandlinetools-linux-9477386_latest.zip
+        mkdir -p android-sdk/cmdline-tools
+        mv cmdline-tools android-sdk/cmdline-tools/latest
+        
+        # Set environment variables
+        export ANDROID_SDK_ROOT=~/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+        
+        # Accept licenses and install build-tools
+        yes | sdkmanager --licenses
+        sdkmanager "platform-tools" "build-tools;33.0.2" "platforms;android-33"
+
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v3
+      with:
+        path: ~/.buildozer
+        key: buildozer-${{ hashFiles('buildozer.spec') }}
+
+    - name: Cache Buildozer local directory
+      uses: actions/cache@v3
+      with:
+        path: .buildozer
+        key: buildozer-local-${{ hashFiles('buildozer.spec') }}
+
     - name: Build APK (Buildozer installs SDK + aidl)
       run: |
+        export ANDROID_SDK_ROOT=~/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
         buildozer -v android debug
 
     - name: Upload APK
