@@ -42,12 +42,13 @@ jobs:
           ninja-build \
           ccache \
           autoconf \
-          automake
+          automake \
+          gettext
 
-    - name: Install buildozer
+    - name: Install buildozer and dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install buildozer==1.5.0 cython
+        pip install --upgrade buildozer cython
 
     - name: Setup Android SDK and NDK
       run: |
@@ -56,10 +57,12 @@ jobs:
         cd ~/.buildozer/android/platform
         
         # Download and setup Android SDK Command-line Tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        echo "Downloading Android SDK..."
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
         unzip -q cmdline-tools.zip
         mkdir -p android-sdk/cmdline-tools
         mv cmdline-tools android-sdk/cmdline-tools/latest
+        rm cmdline-tools.zip
         
         # Create the legacy tools/bin directory structure that buildozer expects
         mkdir -p android-sdk/tools/bin
@@ -72,38 +75,68 @@ jobs:
         export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
         
         # Accept licenses
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        echo "Accepting Android SDK licenses..."
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
         
         # Install required SDK components
+        echo "Installing Android SDK components..."
         $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
         
-        # Download and setup Android NDK
-        wget https://dl.google.com/android/repository/android-ndk-r25c-linux.zip -O ndk.zip
+        # Download and setup Android NDK r25b (matching buildozer.spec)
+        echo "Downloading Android NDK r25b..."
+        wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
         unzip -q ndk.zip
-        # The zip already creates android-ndk-r25c directory, so we don't need to rename it
         rm ndk.zip
+        
+        echo "Android SDK and NDK setup complete"
+        ls -la
 
     - name: Cache Buildozer global directory
       uses: actions/cache@v3
       with:
         path: ~/.buildozer
-        key: buildozer-${{ hashFiles('buildozer.spec') }}-v2
+        key: buildozer-global-${{ hashFiles('buildozer.spec') }}-v4
+        restore-keys: |
+          buildozer-global-
 
     - name: Cache Buildozer local directory
       uses: actions/cache@v3
       with:
         path: .buildozer
-        key: buildozer-local-${{ hashFiles('buildozer.spec') }}-v2
+        key: buildozer-local-${{ hashFiles('buildozer.spec') }}-v4
+        restore-keys: |
+          buildozer-local-
 
-    - name: Build APK
+    - name: Build APK with Buildozer
       run: |
+        # Unset conflicting system Android environment variables
+        unset ANDROID_NDK
+        unset ANDROID_NDK_HOME
+        unset ANDROID_NDK_ROOT
+        unset ANDROID_NDK_LATEST_HOME
+        
+        # Set correct paths for buildozer
         export ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk
         export ANDROID_HOME=$ANDROID_SDK_ROOT
+        export ANDROIDNDK=$HOME/.buildozer/android/platform/android-ndk-r25b
+        export ANDROIDAPI=33
+        export ANDROIDMINAPI=21
         export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/33.0.2
+        
+        # Verify paths exist
+        echo "Verifying Android SDK/NDK paths..."
+        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "ANDROIDNDK: $ANDROIDNDK"
+        ls -la $ANDROID_SDK_ROOT
+        ls -la $ANDROIDNDK
+        
+        # Build the APK
+        echo "Starting buildozer build..."
         buildozer -v android debug
 
-    - name: Upload APK
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: apk
+        name: minecraft-status-app-debug
         path: bin/*.apk
+        if-no-files-found: error
